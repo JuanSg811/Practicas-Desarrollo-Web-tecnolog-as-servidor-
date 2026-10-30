@@ -2,6 +2,7 @@ package mx.edu.backendacademico.controller;
 
 // Traduce HTTP a llamadas de aplicación y construye respuestas mediante DTO.
 
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import mx.edu.backendacademico.dto.ActualizarAlumnoRequest;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/v1/alumnos")
@@ -27,24 +27,8 @@ public class AlumnoController {
     public AlumnoController(AlumnoService service) { this.service = service; }
 
     // GET consulta sin solicitar cambios de estado de negocio.
-    
     @GetMapping
-    public List<AlumnoResponse> listar(
-            @RequestParam(required = false) String estatus) {
-
-        var alumnos = service.listar();
-
-        return alumnos.stream()
-            .filter(alumno ->
-                estatus == null
-                || estatus.isBlank()
-                || alumno.estatus().name()
-                    .equalsIgnoreCase(estatus.trim())
-            )
-            .map(AlumnoMapper::toResponse)
-            .toList();
-    }
-
+    public List<AlumnoResponse> listar() { return service.listar().stream().map(AlumnoMapper::toResponse).toList(); }
 
     // GET consulta sin solicitar cambios de estado de negocio.
     @GetMapping("/{id}")
@@ -52,14 +36,14 @@ public class AlumnoController {
 
     // El servicio asigna identidad; ResponseEntity publica 201 y Location.
     @PostMapping
-    public ResponseEntity<AlumnoResponse> crear(@RequestBody CrearAlumnoRequest request) {
+    public ResponseEntity<AlumnoResponse> crear(@RequestBody @Valid CrearAlumnoRequest request) {
         var creado = service.crear(request.matricula(), request.nombre(), request.correo());
         return ResponseEntity.created(URI.create("/api/v1/alumnos/" + creado.id())).body(AlumnoMapper.toResponse(creado));
     }
 
     // PUT sustituye todos los campos de la representación editable.
     @PutMapping("/{id}")
-    public AlumnoResponse actualizar(@PathVariable Long id, @RequestBody ActualizarAlumnoRequest request) {
+    public AlumnoResponse actualizar(@PathVariable Long id, @RequestBody @Valid ActualizarAlumnoRequest request) {
         return AlumnoMapper.toResponse(service.actualizar(id, request.nombre(), request.correo()));
     }
 
