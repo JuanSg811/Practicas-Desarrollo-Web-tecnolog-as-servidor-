@@ -4,7 +4,7 @@
 POST {{baseUrl}}/alumnos
 Content-Type: application/json
 
-{"matricula":"A001","nombre":"Ada Lovelace","correo":"ada@universidad.mx"}
+{"matricula":"A001","nombre":"Juan Carlos","correo":"jsanchez@redsia.com.mx"}
 
 ### Listar alumnos
 GET {{baseUrl}}/alumnos
