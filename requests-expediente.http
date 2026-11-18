@@ -1,0 +1,34 @@
+# Semana 10 - reglas por objeto. Requiere datos provisionados en PostgreSQL.
+# 1) Crear dos alumnos con POST autorizado y CSRF usando requests.http.
+# 2) En PostgreSQL ejecutar (sustituir los ID por los creados):
+#    INSERT INTO expediente_propietarios(username, alumno_id) VALUES ('alumno', 1), ('alumno2', 2);
+# Las identidades nunca se toman del query ni del body HTTP.
+@host = http://localhost:8080
+@alumnoId = 1
+
+### 401 - falta autenticación
+GET {{host}}/api/v1/alumnos/mi-expediente
+
+### 200 - propietario: se determina por la sesión/autenticación
+GET {{host}}/api/v1/alumnos/mi-expediente
+Authorization: Basic alumno alumno123
+
+### 200 - propietario por id
+GET {{host}}/api/v1/alumnos/{{alumnoId}}/expediente
+Authorization: Basic alumno alumno123
+
+### 403 - otro alumno intenta consultar expediente ajeno
+GET {{host}}/api/v1/alumnos/{{alumnoId}}/expediente
+Authorization: Basic alumno2 alumno2123
+
+### 200 - administrador tiene acceso a expediente existente
+GET {{host}}/api/v1/alumnos/{{alumnoId}}/expediente
+Authorization: Basic admin admin123
+
+### 403 - ruta anterior no permite eludir autorización por objeto
+GET {{host}}/api/v1/alumnos/{{alumnoId}}
+Authorization: Basic alumno alumno123
+
+### Sin suplantación: query username=admin no cambia el principal autenticado
+GET {{host}}/api/v1/alumnos/mi-expediente?username=admin
+Authorization: Basic alumno alumno123

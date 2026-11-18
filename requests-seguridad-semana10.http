@@ -1,0 +1,42 @@
+# SEMANA 10 - comprobacion manual con IntelliJ HTTP Client
+# Requisitos: backend en localhost:8080, PostgreSQL activo.
+# Ejecuta los bloques EN ORDEN. Mantener habilitado el cookie jar del cliente HTTP.
+# El GET /csrf configura la cookie JSESSIONID que debe reutilizarse en los POST.
+# La respuesta del GET /csrf contiene el token; se guarda como variable global csrfU10.
+# Usuarios de laboratorio: alumno/alumno123 y docente/docente123
+
+### 1. GET sin credenciales: esperado 401 Unauthorized
+GET http://localhost:8080/api/v1/alumnos
+
+### 2. Obtener token CSRF autenticado como docente: esperado 200 OK
+GET http://localhost:8080/api/v1/csrf
+Authorization: Basic docente docente123
+
+> {%
+  client.global.set("csrfU10", response.body.token);
+  client.log("CSRF recuperado; conserva JSESSIONID para las siguientes peticiones.");
+%}
+
+### 3. POST como ALUMNO con token correcto: esperado 403 Forbidden (rol insuficiente)
+POST http://localhost:8080/api/v1/alumnos
+Authorization: Basic alumno alumno123
+X-CSRF-TOKEN: {{csrfU10}}
+Content-Type: application/json
+
+{"matricula":"U10-A-001","nombre":"Ada Lovelace","correo":"ada.u10@u.mx"}
+
+### 4. POST como DOCENTE sin token: esperado 403 Forbidden (CSRF ausente)
+POST http://localhost:8080/api/v1/alumnos
+Authorization: Basic docente docente123
+Content-Type: application/json
+
+{"matricula":"U10-D-002","nombre":"Ada Lovelace","correo":"ada.u10@u.mx"}
+
+### 5. POST como DOCENTE con token: esperado 201 Created, Location: /api/v1/alumnos/{id}
+# La matricula debe ser nueva; cambia U10-D-003 si ya ejecutaste este bloque.
+POST http://localhost:8080/api/v1/alumnos
+Authorization: Basic docente docente123
+X-CSRF-TOKEN: {{csrfU10}}
+Content-Type: application/json
+
+{"matricula":"U10-D-003","nombre":"Ada Lovelace","correo":"ada.u10@u.mx"}
