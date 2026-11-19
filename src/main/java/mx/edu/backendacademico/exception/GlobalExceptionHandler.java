@@ -15,6 +15,16 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(ClaveIdempotenciaInvalidaException.class)
+    ProblemDetail claveInvalida(ClaveIdempotenciaInvalidaException ex) {
+        return problema(HttpStatus.BAD_REQUEST, "CLAVE_IDEMPOTENCIA_INVALIDA", ex.getMessage());
+    }
+
+    @ExceptionHandler(ClaveIdempotenciaConflictoException.class)
+    ProblemDetail idempotencia(ClaveIdempotenciaConflictoException ex) {
+        return problema(HttpStatus.CONFLICT, "CLAVE_IDEMPOTENCIA_REUTILIZADA", ex.getMessage());
+    }
+
     @ExceptionHandler(AlumnoNoEncontradoException.class)
     ProblemDetail noEncontrado(AlumnoNoEncontradoException ex) {
         return problema(HttpStatus.NOT_FOUND, "ALUMNO_NO_ENCONTRADO", ex.getMessage());

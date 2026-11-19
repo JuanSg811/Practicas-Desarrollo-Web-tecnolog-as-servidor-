@@ -1,0 +1,48 @@
+# Comprobaciones U11 - Cliente HTTP de IntelliJ IDEA
+# Mantén habilitada la gestión de cookies del cliente HTTP.
+# La respuesta de /csrf debe conservar JSESSIONID al realizar POST, PUT y DELETE.
+@base = http://localhost:8080
+@csrf = COPIA_TOKEN_DESDE_LA_RESPUESTA_CSRF
+
+### Documento OpenAPI público: debe responder 200 y contener openapi: 3.1.0
+GET {{base}}/openapi.yaml
+
+### Saludo público con parámetro opcional nombre: 200
+GET {{base}}/api/v1/saludo?nombre=Ada
+
+### Listado sin credenciales: 401
+GET {{base}}/api/v1/alumnos
+
+### Obtener token con usuario docente: 200 (conservar JSESSIONID)
+GET {{base}}/api/v1/csrf
+Authorization: Basic docente docente123
+
+### Alumno intenta crear sin token: 403
+POST {{base}}/api/v1/alumnos
+Authorization: Basic alumno alumno123
+Content-Type: application/json
+
+{"matricula":"U11-NO-ALUMNO","nombre":"Ada Prueba","correo":"ada.prueba@example.org"}
+
+### Docente intenta crear sin CSRF: 403
+POST {{base}}/api/v1/alumnos
+Authorization: Basic docente docente123
+Content-Type: application/json
+
+{"matricula":"U11-NO-CSRF","nombre":"Ada Prueba","correo":"ada.prueba@example.org"}
+
+### Docente crea con mismo token y cookie: 201 + Location
+POST {{base}}/api/v1/alumnos
+Authorization: Basic docente docente123
+X-CSRF-TOKEN: {{csrf}}
+Content-Type: application/json
+
+{"matricula":"U11-PRUEBA-01","nombre":"Ada Prueba","correo":"ada.prueba@example.org"}
+
+### Lectura de alumnos como ALUMNO: 200
+GET {{base}}/api/v1/alumnos
+Authorization: Basic alumno alumno123
+
+### Historial de inscripciones (cambiar ID por uno existente)
+GET {{base}}/api/v1/inscripciones/alumno/1?page=0&size=5&sort=fecha
+Authorization: Basic docente docente123

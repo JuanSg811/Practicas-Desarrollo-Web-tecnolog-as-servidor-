@@ -10,6 +10,11 @@ import mx.edu.backendacademico.dto.AlumnoMapper;
 import mx.edu.backendacademico.dto.AlumnoResponse;
 import mx.edu.backendacademico.dto.CrearAlumnoRequest;
 import mx.edu.backendacademico.service.AlumnoService;
+import mx.edu.backendacademico.service.CreacionIdempotenteService;
+import mx.edu.backendacademico.exception.ClaveIdempotenciaInvalidaException;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/alumnos")
 public class AlumnoController {
     private final AlumnoService service;
-    public AlumnoController(AlumnoService service) { this.service = service; }
+    private final ObjectProvider<CreacionIdempotenteService> idempotencia;
+    public AlumnoController(AlumnoService service,
+            ObjectProvider<CreacionIdempotenteService> idempotencia) {
+        this.service = service;
+        this.idempotencia = idempotencia;
+    }
 
     // GET consulta sin solicitar cambios de estado de negocio.
     @GetMapping
@@ -36,9 +46,26 @@ public class AlumnoController {
 
     // El servicio asigna identidad; ResponseEntity publica 201 y Location.
     @PostMapping
-    public ResponseEntity<AlumnoResponse> crear(@RequestBody @Valid CrearAlumnoRequest request) {
-        var creado = service.crear(request.matricula(), request.nombre(), request.correo());
-        return ResponseEntity.created(URI.create("/api/v1/alumnos/" + creado.id())).body(AlumnoMapper.toResponse(creado));
+    public ResponseEntity<AlumnoResponse> crear(@RequestBody @Valid CrearAlumnoRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String clave,
+            Authentication principal) {
+        if (clave == null) {
+            // Compatibilidad con las solicitudes anteriores de U11.
+            var creado = service.crear(request.matricula(), request.nombre(), request.correo());
+            return ResponseEntity.created(URI.create("/api/v1/alumnos/" + creado.id()))
+                .body(AlumnoMapper.toResponse(creado));
+        }
+        if (!clave.matches("[A-Za-z0-9_-]{8,128}")) {
+            throw new ClaveIdempotenciaInvalidaException();
+        }
+        var servicio = idempotencia.getIfAvailable();
+        if (servicio == null) {
+            throw new IllegalStateException("Idempotencia requiere el perfil jpa y PostgreSQL");
+        }
+        var resultado = servicio.crear(principal.getName(), clave, request);
+        return ResponseEntity.created(URI.create("/api/v1/alumnos/" + resultado.alumno().id()))
+            .header("Idempotency-Replayed", Boolean.toString(resultado.repeticion()))
+            .body(resultado.alumno());
     }
 
     // PUT sustituye todos los campos de la representación editable.
